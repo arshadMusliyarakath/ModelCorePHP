@@ -27,6 +27,7 @@ class Model
     protected $selectArgs = '';
     protected $groupArgs = '';
     protected $orderArgs = '';
+    protected $setName = '';
     public function __construct($tableName)
     {
         $this->tableName = $tableName;
@@ -74,10 +75,19 @@ class Model
         return $this;
     }
 
-
     public function orderBy($data){
         $this->orderArgs = '';
         $this->orderArgs = "ORDER BY ".$data;
+        return $this;
+    }
+
+    public function setName($data){
+        $this->setName = '';
+        $as = ', ';
+        foreach ($data as $key => $value) {
+            $as = $as.$key." as ".$value.", ";
+        }
+        $this->setName = substr($as, 0, -2);
         return $this;
     }
     
@@ -129,11 +139,13 @@ class Model
 
     public function get()
     {   
+        $where = (!empty($this->conditions)) ? $this->conditions : '';
         $args = (!empty($this->selectArgs)) ? $this->selectArgs : '*';
         $join = (!empty($this->join)) ? $this->join : '';
         $group = (!empty($this->groupArgs)) ? $this->groupArgs : ''; 
-        $order = (!empty($this->orderArgs)) ? $this->orderArgs : ''; 
-        $query = "SELECT $args FROM $this->tableName $join $this->conditions $group $order";
+        $order = (!empty($this->orderArgs)) ? $this->orderArgs : '';
+        $setName = (!empty($this->setName)) ? $this->setName : ''; 
+        $query = "SELECT $args $setName FROM $this->tableName $join $where $group $order";
         return $this->fetchAll($query);
         //return $query;
     }
@@ -168,8 +180,6 @@ class Model
         $query = "UPDATE $this->tableName SET $set $this->conditions";
         return $this->prepare($query);
     }
-
-    
 }
 
 // $project = new Model('projects');
@@ -193,4 +203,5 @@ class Model
 //     array('projects', 'project_id', 'project_id'),
 //     array('tasks', 'task_id', 'task_id')
 // ];
-// var_dump($entry->join($data)->select('projects.project_name')->groupBy('projects.project_id')->orderBy('hours')->get());
+//var_dump($entry->join($data)->select('projects.status as fgdfg')->get());
+// var_dump($entry->join($data)->where('projects.status','0')->setName(array('projects.status' => 'projectStatus','tasks.status' => 'taskStatus'))->get());
