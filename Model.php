@@ -1,10 +1,10 @@
 <?php
 trait DBConfig {
     protected $host = 'localhost';
-    protected $port = '8889';
+    protected $port = '3306';
     protected $dbname = 'Skilledin';
     protected $username = 'root';
-    protected $password = 'root';
+    protected $password = '';
 
     public function connect() {
         try {
@@ -23,19 +23,14 @@ class Model
     protected $tableName;
     protected $db;
     protected $conditions = '';
-
+    protected $join = '';
+    protected $selectArgs = '';
+    protected $groupArgs = '';
+    protected $orderArgs = '';
     public function __construct($tableName)
     {
         $this->tableName = $tableName;
         $this->db = $this->connect();
-    }
-
-    public function all()
-    {
-        $query = "SELECT * FROM $this->tableName";
-        $stmt = $this->db->query($query);
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return $data;
     }
 
     public function where($keys = null, $values = null)
@@ -51,9 +46,41 @@ class Model
         else{
             $this->conditions = "$keys = '$values'";
         }
+        $this->conditions = 'WHERE '.$this->conditions;
         return $this;
     }
 
+    public function select(){
+        $this->selectArgs = '';
+        $arguments =  func_get_args();
+        foreach ($arguments as  $arg) {
+            $this->selectArgs = $this->selectArgs."$arg".", ";
+        }
+        $this->selectArgs= substr($this->selectArgs, 0, -2);
+        return $this;
+    }
+
+    public function join($data){
+        $this->join = '';
+        foreach ($data as $value) {
+            $this->join = $this->join." LEFT JOIN $value[0] ON $value[0].$value[1] = $this->tableName.$value[2]";
+        }
+        return $this;
+    }
+
+    public function groupBy($data){
+        $this->groupArgs = '';
+        $this->groupArgs = "GROUP BY ".$data;
+        return $this;
+    }
+
+
+    public function orderBy($data){
+        $this->orderArgs = '';
+        $this->orderArgs = "ORDER BY ".$data;
+        return $this;
+    }
+    
     public function getPrimaryKey()
     {
         $query = "SHOW KEYS FROM $this->tableName WHERE Key_name = 'PRIMARY'";
@@ -102,13 +129,18 @@ class Model
 
     public function get()
     {   
-        $query = "SELECT * FROM $this->tableName WHERE $this->conditions";
+        $args = (!empty($this->selectArgs)) ? $this->selectArgs : '*';
+        $join = (!empty($this->join)) ? $this->join : '';
+        $group = (!empty($this->groupArgs)) ? $this->groupArgs : ''; 
+        $order = (!empty($this->orderArgs)) ? $this->orderArgs : ''; 
+        $query = "SELECT $args FROM $this->tableName $join $this->conditions $group $order";
         return $this->fetchAll($query);
+        //return $query;
     }
 
     public function delete()
     {
-        $query = "DELETE FROM $this->tableName WHERE $this->conditions";
+        $query = "DELETE FROM $this->tableName $this->conditions";
         return $this->prepare($query);
     }
 
@@ -133,23 +165,22 @@ class Model
             $set = $set.$key." = '".$value."', ";
         }
         $set = substr($set, 0, -2);
-        $query = "UPDATE $this->tableName SET $set WHERE $this->conditions";
+        $query = "UPDATE $this->tableName SET $set $this->conditions";
         return $this->prepare($query);
     }
 
-    public function join($data){
-        $query = "SELECT * FROM $this->tableName";
-        $join = '';
-        foreach ($data as $value) {
-            $join = $join." LEFT JOIN $value[0] ON $value[0].$value[1] = $this->tableName.$value[2]";
-        }
-        return $this->fetchAll($query.$join);
-    }
+    
 }
 
-$project = new Model('projects');
-$task = new Model('tasks');
-$entry = new Model('entry');
+// $project = new Model('projects');
+// $task = new Model('tasks');
+// $entry = new Model('entry');
+
+
+// echo "<pre>";
+// $projects = $project->select('project_name')->get();
+// var_dump($projects);
+
 
 // $user = new Model('user');
 // $user->find($primaryKey);
@@ -162,4 +193,4 @@ $entry = new Model('entry');
 //     array('projects', 'project_id', 'project_id'),
 //     array('tasks', 'task_id', 'task_id')
 // ];
-// $users->join($data);
+// var_dump($entry->join($data)->select('projects.project_name')->groupBy('projects.project_id')->orderBy('hours')->get());
